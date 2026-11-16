@@ -1,0 +1,81 @@
+# 드론 UGV 검출 자동 학습 설정.
+# 현장에서 바꿀 값은 이 파일을 고치지 말고 local.yaml 에 같은 모양으로 적는다(이 파일 위에 덮어씀, git 에 안 올라감).
+# 임무코드·API 키는 여기에 적지 않는다 → 환경변수 MAICON_CODE, ANTHROPIC_API_KEY (없으면 실행할 때 물어봄).
+
+server:
+  url: ""              # 경기 서버 주소(http:// 포함). 비우면 MAICON_SERVER_URL 환경변수
+  camera: main         # main | test1 | test2
+  interval_s: 1.0      # 받는 간격
+  timeout_s: 5.0
+
+work_dir: work         # 사진·라벨·모델이 쌓이는 폴더
+
+collect:
+  same_diff: 1.5       # 직전 저장 사진과 밝기 차이(0~255 평균)가 이보다 작으면 같은 사진으로 보고 건너뜀
+  keep_every_same: 10  # 같은 사진이 이어져도 n장마다 1장은 저장
+
+label:
+  robots_in_arena: 1   # 연습 때 경기장 안 UGV 수. 정확히 이 수만큼 찾은 사진만 라벨로 씀. 모르면 0(개수 검사 안 함)
+  min_frames_for_bg: 10  # 배경을 만들 최소 사진 수
+  bg_frames: 25        # 배경(중앙값)에 쓰는 사진 수
+  bg_refresh: 50       # 새 사진이 이만큼 들어오면 배경을 다시 만듦
+  fg_threshold: 30     # 배경과 다르다고 볼 밝기 차이
+  min_area_px: 60      # 움직이는 덩어리 크기 범위(처음 값). 라벨이 쌓이면 스스로 좁힘
+  max_area_px: 40000
+  size_learn_after: 20
+  pad: 0.12            # 상자 여유(가로세로 비율)
+  color:               # 안테나 색(HSV, OpenCV 범위 0~179)
+    s_min: 110
+    v_min: 70
+    min_pixels: 6
+  save_review: true    # work/review/ 에 판정 그림 저장(눈으로 확인용)
+  max_per_cycle: 300   # 한 주기에 판정할 최대 사진 수(밀려도 학습·배포가 멈추지 않게, 최신 사진부터)
+
+claude:
+  enabled: true        # 키가 없으면 자동으로 꺼짐 → OpenCV 만으로 라벨
+  model: claude-opus-5-5
+  timeout_s: 60
+  workers: 4           # 동시에 보내는 요청 수
+  max_side: 1568       # 보내는 사진 긴 변
+
+augment:
+  per_real: 4          # 실사진 1장당 합성 사진 수
+  max_total: 2000
+  robots_min: 2        # 합성 사진 1장에 붙일 UGV 수
+  robots_max: 6
+  swap_color_p: 0.5    # 안테나 색(빨강↔파랑)을 바꿀 확률
+  negatives: 0.05      # UGV 없는 배경 사진 비율
+
+dataset:
+  block: 20            # 연속 사진 묶음 크기
+  val_every: 5         # 묶음 5개 중 1개를 시험용(실사진만)
+  max_real_train: 1500 # 학습에 쓰는 실사진 최대 수(넘으면 고르게 솎음 — 비슷한 사진이 많아 학습만 느려짐)
+
+train:
+  base_model: yolo11n.pt   # 처음 학습의 출발 모델(인터넷에서 자동으로 받음)
+  continue_from_current: true  # 다음 학습은 지금 모델에서 이어서
+  imgsz: 960           # 학습·ONNX 입력 크기(로봇 추론도 이 크기)
+  epochs: 60
+  patience: 15
+  batch: 16
+  workers: 2
+  device: auto         # auto | cpu | 0
+  min_labels: 40       # 첫 학습에 필요한 실사진 라벨 수
+  retrain_every: 100   # 새 라벨이 이만큼 쌓이면 다시 학습
+  retrain_growth: 0.3  # 그리고 지난 학습 때보다 30% 이상 늘었을 때(라벨이 많아질수록 덜 자주)
+  min_map50: 0.6       # 이보다 낮으면 배포 안 함
+  tolerance: 0.02      # 지금 모델보다 이만큼 넘게 나빠지면 배포 안 함
+  opset: 12
+
+deploy:
+  auto: true           # 학습이 검사를 통과하면 바로 로봇에 복사
+  mode: ssh            # ssh | local | off
+  host: ""             # 로봇 IP
+  user: ""             # 로봇 계정
+  port: 22
+  remote_dir: m6_model # 로봇 홈 아래 폴더
+  python: python3      # 로봇에서 점검을 돌릴 명령(컨테이너면 예: "docker exec ugv python3")
+  local_dir: ""        # mode=local 일 때 복사할 폴더(시험용)
+
+pipeline:
+  cycle_s: 20          # 라벨·학습 확인 주기

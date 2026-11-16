@@ -1,0 +1,8 @@
+work/
+work_selftest/
+local.yaml
+*.pt
+*.onnx
+__pycache__/
+.pytest_cache/
+runs/

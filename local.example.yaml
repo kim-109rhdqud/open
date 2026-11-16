@@ -1,0 +1,15 @@
+# local.yaml 로 복사해서 현장 값만 적는다 (git 에 안 올라감). 임무코드·API 키는 적지 않는다.
+server:
+  url: "http://<경기 서버>:<포트>"
+  camera: main
+
+label:
+  robots_in_arena: 1     # 연습 때 경기장 안 UGV 수
+
+deploy:
+  host: "<로봇 IP>"
+  user: "<로봇 계정>"
+  python: python3        # 컨테이너 안에서 돌려야 하면 예: "docker exec <컨테이너> python3"
+
+train:
+  device: auto           # GPU 있으면 자동

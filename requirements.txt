@@ -1,0 +1,10 @@
+# 현장 PC(Windows 11, Python 3.10) — 학습용
+numpy
+opencv-python
+requests
+pyyaml
+ultralytics          # torch 는 작업 2 setup.bat 의 desktop 역할이 cu128 로 설치함(GPU). 없으면 CPU 판이 같이 깔림
+onnx
+onnxslim
+pytest
+# 로봇은 numpy + OpenCV 만 있으면 robot_check.py 가 돈다
